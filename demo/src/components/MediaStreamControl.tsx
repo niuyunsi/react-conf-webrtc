@@ -27,17 +27,21 @@ export class MediaStreamControl extends React.Component<IMediaStreamControlProps
     }
 
     private onToggleScreenShare() {
-        ChromeExtension.Instance.isExtensionAvailable()
-            .then(available => {
-                if (available) {
-                    if (this.props.toggleScreenShare) {
-                        this.props.toggleScreenShare();
-                    }
-                }
-                else {
-                    this.downloadFile('https://github.com/teamious/react-conf-webrtc/raw/master/docs/ext/teamious.screen.chrome.crx');
-                }
-            })
+        if (this.props.toggleScreenShare) {
+            this.props.toggleScreenShare();
+        }
+
+        // ChromeExtension.Instance.isExtensionAvailable()
+        //     .then(available => {
+        //         if (available) {
+        //             if (this.props.toggleScreenShare) {
+        //                 this.props.toggleScreenShare();
+        //             }
+        //         }
+        //         else {
+        //             this.downloadFile('https://github.com/teamious/react-conf-webrtc/raw/master/docs/ext/teamious.screen.chrome.crx');
+        //         }
+        //     })
     }
 
     private downloadFile(url: string) {
@@ -68,6 +72,10 @@ export class MediaStreamControl extends React.Component<IMediaStreamControlProps
                     this.props.toggleScreenShare && ChromeExtension.Instance.isChrome() &&
                     <button className='rcw-stream-control-share' onClick={this.onToggleScreenShare}>{shareText}</button>
                 }
+
+                <button className='rcw-stream-control-ff-share' onClick={this.onToggleScreenShare}>
+                    Firefox Screen Share
+                </button>
             </div>
         )
     }

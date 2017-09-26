@@ -123,7 +123,6 @@ function connect() {
     const webRTCUrl = env.SPREED_URL ? env.SPREED_URL : location.hostname + ":8443";
     const conn = Connect('wss://' + webRTCUrl + '/ws');
     conn.onconnmessage = (msg, done) => {
-        console.log('Intercepted SpreedResponse message with type: %s', msg.Data.Type);
         done()
     }
     return conn;

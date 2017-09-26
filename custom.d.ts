@@ -29,8 +29,16 @@ interface RTCDataChannel {
 interface RTCPeerConnection extends EventTarget {
     createDataChannel(label: string, options?: RTCDataChannelInit): RTCDataChannel;
     ondatachannel: (event: RTCDataChannelEvent) => void;
+    ontrack: (event: RTCTrackEvent) => void;
+    addTrack(track: MediaStreamTrack, stream: MediaStream): void;
+    removeTrack(sender: RTCRtpSender): void;
+    getSenders(): RTCRtpSender[];
 }
 
 interface RTCDataChannelEvent {
     readonly channel: RTCDataChannel;
+}
+
+interface RTCTrackEvent {
+    streams: MediaStream[];
 }

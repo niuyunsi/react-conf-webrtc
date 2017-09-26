@@ -109,6 +109,7 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
     private dataChannels: { [id: string]: RTCDataChannel } = {};
     private localCamStream: MediaStream;
     private renegotiation: { [id: string]: boolean } = {};
+    private negotiations: {[id: string]: any} = {}
 
     constructor(props: IConferenceProps) {
         super(props);
@@ -414,35 +415,75 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
     }
 
     private getScreenMedia() {
-        const screenCaptureConstraints = {
-            video: {
-                mandatory: {
-                    chromeMediaSource: 'desktop',
-                    chromeMediaSourceId: '',
-                    maxWidth: screen.width > 1920 ? screen.width : 1920,
-                    maxHeight: screen.height > 1080 ? screen.height : 1080
-                }
-            },
+        this.getScreenMediaFirefox();
+
+        // const screenCaptureConstraints = {
+        //     video: {
+        //         mandatory: {
+        //             chromeMediaSource: 'desktop',
+        //             chromeMediaSourceId: '',
+        //             maxWidth: screen.width > 1920 ? screen.width : 1920,
+        //             maxHeight: screen.height > 1080 ? screen.height : 1080
+        //         }
+        //     },
+        //     audio: false,
+        // };
+
+        // ChromeExtension.Instance.getShareScreenId()
+        //     .then(sourceId => {
+        //         screenCaptureConstraints.video.mandatory.chromeMediaSourceId = sourceId;
+        //         return navigator.mediaDevices.getUserMedia(screenCaptureConstraints as any);
+        //     }).then(stream => {
+        //         for (let id in this.peerConnections) {
+        //             const conn = this.peerConnections[id];
+        //             conn.getSenders().forEach(sender => {
+        //                 if (sender.track.kind === 'video') {
+        //                     conn.removeTrack(sender);
+        //                 }
+        //             });
+
+        //             stream.getTracks().forEach(track => {
+        //                 conn.addTrack(track, stream);
+        //             });
+        //         }
+
+        //         // if (this.localCamStream && this.localCamStream.getAudioTracks().length > 0) {
+        //         //     // NOTE(gaolw): Merge the audio track into the screen capture stream.
+        //         // }
+
+        //         // stream.getVideoTracks()[0].onended = this.onScreenMediaEnded;
+        //         // this.setLocalStream(stream, {
+        //         //     isScreenSharing: true
+        //         // });
+
+        //     })
+        //     .catch(this.handleMediaException);
+    }
+
+    private getScreenMediaFirefox() {
+        navigator.mediaDevices.getUserMedia({
+            video: {mediaSource: 'window'},
             audio: false,
-        };
+        } as any).then(stream => {
 
-        ChromeExtension.Instance.getShareScreenId()
-            .then(sourceId => {
-                screenCaptureConstraints.video.mandatory.chromeMediaSourceId = sourceId;
-                return navigator.mediaDevices.getUserMedia(screenCaptureConstraints as any);
-            }).then(stream => {
-                if (this.localCamStream && this.localCamStream.getAudioTracks().length > 0) {
-                    // NOTE(gaolw): Merge the audio track into the screen capture stream.
-                    stream.addTrack(this.localCamStream.getAudioTracks()[0]);
-                }
+            for (let id in this.peerConnections) {
+                const conn = this.peerConnections[id];
+                conn.getSenders().forEach(sender => {
+                    if (sender.track.kind === 'video') {
+                        conn.removeTrack(sender)
+                    }
+                })
 
-                stream.getVideoTracks()[0].onended = this.onScreenMediaEnded;
-                this.setLocalStream(stream, {
-                    isScreenSharing: true
+                stream.getTracks().forEach(track => {
+                    conn.addTrack(track, stream);
                 });
+            }
 
-            })
-            .catch(this.handleMediaException);;
+            // this.setLocalStream(stream, {
+            //     isScreenSharing: true
+            // });
+
+        }).catch(this.handleMediaException);
     }
 
     private onScreenMediaEnded(e: any) {
@@ -456,7 +497,7 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
     }
 
     private setLocalStream(stream: MediaStream, conferenceStream?: Partial<ConferenceStream>) {
-        const oldStream = this.state.localStream ? this.state.localStream.stream : null;
+        // const oldStream = this.state.localStream ? this.state.localStream.stream : null;
         this.setState({
             localStream: {
                 ...this.state.localStream,
@@ -470,16 +511,24 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
 
         this.connection.subscribe(this.handleIncomingMessage);
 
-        if (oldStream !== stream) {
-            for (let peerId in this.peerConnections) {
-                let peerConnection = this.peerConnections[peerId];
-                if (oldStream) {
-                    peerConnection.removeStream(oldStream);
-                    this.renegotiation[peerId] = true;
-                }
-                peerConnection.addStream(stream);
-            }
+        for (let id in this.peerConnections) {
+            const conn = this.peerConnections[id];
+
+            stream.getTracks().forEach(track => {
+                conn.addTrack(track, stream);
+            });
         }
+
+        // if (oldStream !== stream) {
+        //     for (let peerId in this.peerConnections) {
+        //         let peerConnection = this.peerConnections[peerId];
+        //         if (oldStream) {
+        //             peerConnection.removeStream(oldStream);
+        //             this.renegotiation[peerId] = true;
+        //         }
+        //         peerConnection.addStream(stream);
+        //     }
+        // }
     }
 
     private createAudioMonitor() {
@@ -599,8 +648,29 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
             this.handleIceCandidate(event, id)
         };
         peerConnection.onaddstream = (event) => {
-            this.handleRemoteStreamAdded(event, id)
+            // if (event.stream) {
+            //     this.handleRemoteStreamAdded(event.stream, id)
+            // }
         };
+
+        // ontrack is fired whenever a track is added from the other end
+        // of the connection.
+        peerConnection.ontrack = (event) => {
+            var stream = event.streams[0];
+            if (stream) {
+                if (stream.getAudioTracks().length === 0) {
+                    console.log('ontrack(): incoming event: ')
+                    console.log(event)
+                    const remoteStream = this.state.remoteStreams[id].stream;
+                    console.log('remoteStream: ')
+                    console.log(remoteStream)
+                    const audioTrack = remoteStream.getAudioTracks()[0]
+                    stream.addTrack(audioTrack);
+                }
+                this.handleRemoteStreamAdded(stream, id);
+            }
+        }
+
         peerConnection.onremovestream = (event) => {
             console.log('peerConnection.onremovestream:', event);
         }
@@ -608,10 +678,13 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
             this.handleDataChannelReceived(event, id)
         };
         peerConnection.onnegotiationneeded = (event) => {
-            // NOTE(gaolw): when negotiation needed, create offer.
-            console.log('peerConnection.onnegotiationneeded:', id, this.renegotiation);
-            if (this.renegotiation[id]) {
-                console.log('peerConnection.onnegotiationneeded:createOffer', peerConnection);
+            console.log('onnegotiationneeded');
+            if (this.negotiations[id]) {
+                clearTimeout(this.negotiations[id]);
+                this.negotiations[id] = undefined;
+            }
+            this.negotiations[id] = setTimeout(() => {
+                console.log('renegotiating...')
                 // NOTE(gaolw): Somehow the onnegotiationneeded will fire twice, so that offer will be created twice which will cause some errors when answering.
                 this.renegotiation[id] = false;
                 peerConnection.createOffer()
@@ -619,7 +692,8 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
                     .catch(err => {
                         this.onError(createConferenceErrorCreateOffer(err, id));
                     });
-            }
+            }, 1000);
+
         }
 
         if (this.state.localStream.stream) {
@@ -660,15 +734,15 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
         }
     }
 
-    private handleRemoteStreamAdded(event: MediaStreamEvent, id: string) {
-        if (event.stream) {
+    private handleRemoteStreamAdded(stream: MediaStream, id: string) {
+        if (stream) {
             this.setState({
                 remoteStreams: {
                     ...this.state.remoteStreams,
                     [id]: {
                         ...this.state.remoteStreams[id],
                         id: id,
-                        stream: event.stream,
+                        stream,
                         local: false,
                         audioEnabled: true,
                         videoEnabled: true,
