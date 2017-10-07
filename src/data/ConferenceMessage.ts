@@ -6,7 +6,9 @@ export type IConfIncomingMessage =
     IConfIncomingMessageOffer |
     IConfIncomingMessageAnswer |
     IConfMessageAddPeer |
-    IConfMessageRemovePeer
+    IConfMessageRemovePeer |
+    IConfMessageProfile |
+    IConfMessageNewUser
 
 export type IConfOutgoingMessage =
     IConfMessageJoin |
@@ -14,6 +16,10 @@ export type IConfOutgoingMessage =
     IConfOutgoingMessageOffer |
     IConfOutgoingMessageAnswer |
     IConfMessageBye
+
+export type IConfMessageNewUser =
+    IConfMessageAddPeer |
+    IConfMessageProfile
 
 // NOTE(yunsi): IConfMessageSelf is received after the connection is created.
 export interface IConfMessageSelf {
@@ -89,6 +95,13 @@ export interface IConfMessageRemovePeer {
 // NOTE(yunsi): IConfMessageBye is sent out whe you leave a conference room.
 export interface IConfMessageBye {
     type: 'Bye';
+}
+
+export interface IConfMessageProfile {
+    type: 'Profile';
+    Id: ConfUserID;
+    avatar: string;
+    name: string;
 }
 
 export type ConfRoom = string;

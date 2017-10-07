@@ -7,6 +7,7 @@ import {
     IConfMessageAddPeer,
     IConfMessageRemovePeer,
     IConfMessageSelf,
+    IConfMessageNewUser
 } from '../data/ConferenceMessage'
 import {
     SpreedMessageOffer,
@@ -46,13 +47,26 @@ export function TranslateSpreedMessage(message: SpreedResponse): IConfIncomingMe
     }
 }
 
-function translateWelcomeMessage(data: SpreedMessageWelcome, message: SpreedResponse): IConfMessageAddPeer[] | undefined {
-    return data.Users.map<IConfMessageAddPeer>(u => {
-        return {
-            type: 'AddPeer',
-            Id: u.Id,
+function translateWelcomeMessage(data: SpreedMessageWelcome, message: SpreedResponse): IConfMessageNewUser[] | undefined {
+    return data.Users.reduce((result, user) => {
+        result.push(
+            {
+                type: 'AddPeer',
+                Id: user.Id,
+            }
+        )
+        if (user.Status) {
+            result.push(
+                {
+                    type: 'Profile',
+                    Id: user.Id,
+                    avatar: user.Status.BuddyPicture,
+                    name: user.Status.DisplayName
+                }
+            )
         }
-    });
+        return result;
+    }, [] as IConfMessageNewUser[])
 }
 
 function translateConferenceMessage(data: SpreedMessageConference, message: SpreedResponse): IConfMessageAddPeer[] | undefined {
@@ -78,11 +92,26 @@ function translateLeftMessage(data: SpreedMessageLeft, message: SpreedResponse):
     }
 }
 
-function translateJoinedMessage(data: SpreedMessageJoined, message: SpreedResponse): IConfMessageAddPeer | undefined {
-    return {
-        type: 'AddPeer',
-        Id: data.Id,
+function translateJoinedMessage(data: SpreedMessageJoined, message: SpreedResponse): IConfMessageNewUser[] | undefined {
+    let translatedMessage = [] as IConfMessageNewUser[]
+    translatedMessage.push(
+        {
+            type: 'AddPeer',
+            Id: data.Id,
+        }
+    )
+    if (data.Status) {
+        translatedMessage.push(
+            {
+                type: 'Profile',
+                Id: data.Id,
+                avatar: data.Status.BuddyPicture,
+                name: data.Status.DisplayName
+            }
+        )
     }
+
+    return translatedMessage
 }
 
 function translateCandidateMessage(data: SpreedMessageCandidate, message: SpreedResponse): IConfIncomingMessageCandidate | undefined {

@@ -12,6 +12,7 @@ import {
     IConfIncomingMessageAnswer,
     IConfMessageAddPeer,
     IConfMessageRemovePeer,
+    IConfMessageProfile,
     IConfOutgoingMessage,
     ConfUserID,
     IDataChannelMessage,
@@ -57,6 +58,8 @@ export interface ConferenceStream {
     videoEnabled: boolean;
     isScreenSharing: boolean;
     isRecording: boolean;
+    avatar: string;
+    name: string;
 }
 
 export interface IStreamsRendererProps {
@@ -573,6 +576,8 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
                 return this.handleOfferMessage(message);
             case 'Answer':
                 return this.handleAnswerMessage(message);
+            case 'Profile':
+                return this.handleProfileMessage(message);
             default:
                 return console.log('Unkonw message type')
         }
@@ -892,6 +897,31 @@ export class Conference extends React.Component<IConferenceProps, IConferenceSta
                     peerConnection.addIceCandidate(rtcIceCandidate);
                 }
             }
+        }
+    }
+
+    private handleProfileMessage(message: IConfMessageProfile) {
+        console.log('profile message', message)
+        const id = message.Id
+        if (id === this.state.localStream.id) {
+            this.setState({
+                localStream: {
+                    ...this.state.localStream,
+                    avatar: message.avatar,
+                    name: message.name,
+                }
+            })
+        } else {
+            this.setState({
+                remoteStreams: {
+                    ...this.state.remoteStreams,
+                    [id]: {
+                        ...this.state.remoteStreams[id],
+                        avatar: message.avatar,
+                        name: message.name,
+                    }
+                }
+            })
         }
     }
 }
